@@ -8,18 +8,33 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {SIG_VALIDATION_FAILED, SIG_VALIDATION_SUCCESS} from "lib/account-abstraction/contracts/core/Helpers.sol";
+import {IEntryPoint} from "lib/account-abstraction/contracts/interfaces/IEntryPoint.sol";
 
 contract MinimalAccount is IAccount, Ownable {
-    constructor() Ownable(msg.sender) {}
+    error MinimalAccount__NotFromEntryPoint();
+
+    IEntryPoint private immutable i_entryPoint;
+
+    modifier requireFromEntryPoint(){
+        if (msg.sender != address(i_entryPoint)){
+            revert MinimalAccount__NotFromEntryPoint();
+        }
+        _;
+    }
+
+    constructor(address entryPoint) Ownable(msg.sender) {
+        i_entryPoint = IEntryPoint(entryPoint);
+    }
 
     // A signature is valid if it is the MinimalAccount owner
     function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256 missingAccountFunds)
         external
+        requireFromEntryPoint()
         returns (uint256 validationData)
     {
         validationData = _validateSignature(userOp, userOpHash);
         // _validateNonce()
-        _payPreFund(userOp, missingAccountFunds);
+        _payPreFund(missingAccountFunds);
     }
 
     // EIP-191 version of the signed hash
@@ -41,6 +56,13 @@ contract MinimalAccount is IAccount, Ownable {
             (bool success, ) = payable(msg.sender).call{value: missingAccountFunds, gas: type(uint256).max}("");
             (success);
         }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                                GETTERS
+    //////////////////////////////////////////////////////////////*/
+    function getEntryPoint() public view returns (IEntryPoint) {
+        return i_entryPoint;
     }
 
 }
