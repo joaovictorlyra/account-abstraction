@@ -24,6 +24,7 @@ contract HelperConfig is Script {
     // 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789
     constructor() {
         networkConfigs[ETH_SEPOLIA_CHAIND_ID] = getEthSepoliaConfig();
+        networkConfigs[ZKSYNC_SEPOLIA_CHAIN_ID] = getZkSyncSepoliaConfig();
     }
 
     function getConfig() public returns (NetworkConfig memory) {
