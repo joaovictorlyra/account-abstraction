@@ -6,14 +6,26 @@ import {IAccount} from "lib/foundry-era-contracts/src/system-contracts/contracts
 import {Transaction} from "lib/foundry-era-contracts/src/system-contracts/contracts/libraries/MemoryTransactionHelper.sol";
 
 /**
-    Phase 1: Validation
-    1. User sends the transaction to the "zksync API Client" (sort of a "light node")
-    2. The zksync API client checks to see if hte nonce is unique by querying the NonceHolder system contract
-
-    Phase 2: Execution
+ * Lifecycle of a type 113 (0x71) transaction
+ *
+ * Phase 1 Validation
+ *  1. The user sends the transaction to the "zkSync API client" (sort of a "light node")
+ *  2. The zkSync API client checks to see the nonce is unique by querying the NonceHolder system contract
+ *  3. The zkSync API client calls validateTransaction, which MUST update the nonce
+ *  4. The zkSync API client checks the nonce is updated
+ *  5. The zkSync API client calls payForTransaction, or prepareForPaymaster &
+ *     validateAndPayForPaymasterTransaction
+ *  6. The zkSync API client verifies that the bootloader gets paid
+ *
+ * Phase 2 Execution
+ *  7. The zkSync API client passes the validated transaction to the main node / sequencer (as of today, they are
+ *     the same)
+ *  8. The main node calls executeTransaction
+ *  9. If a paymaster was used, the postTransaction is called
  */
 
 contract ZkMinimalAccount is IAccount {
+    // ...who is the msg.sender when this is called?
     function validateTransaction(bytes32 _txHash, bytes32 _suggestedSignedHash, Transaction memory _transaction)
         external
         payable
