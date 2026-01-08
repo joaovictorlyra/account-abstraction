@@ -7,11 +7,26 @@ import {PackedUserOperation} from "lib/account-abstraction/contracts/interfaces/
 import {HelperConfig} from "./HelperConfig.s.sol";
 import {IEntryPoint} from "lib/account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {MinimalAccount} from "../src/ethereum/MinimalAccount.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract SendPackedUserOp is Script {
     using MessageHashUtils for bytes32;
 
-    function run() public {}
+    function run() public {
+        HelperConfig helperConfig = new HelperConfig();
+        address dest = 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d; // Arbitrum Sepolia usdc address
+        uint256 value = 0;
+        bytes memory functionData = abi.encodeWithSelector(IERC20.approve.selector, 0xC76DA0866C529c1822BA4673dB6D360378AA134E, 1e18);
+        bytes memory executeCallData = abi.encodeWithSelector(MinimalAccount.execute.selector, dest, value, functionData);
+        PackedUserOperation memory userOp = generateSignedUserOperarion(executeCallData, helperConfig.getConfig(), 0xDd9F940558FC1E78d0cBb262a11FBA5927799063);
+        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        ops[0] = userOp;
+
+        vm.startBroadcast();
+        IEntryPoint(helperConfig.getConfig().entryPoint).handleOps(ops, payable(helperConfig.getConfig().account));
+        vm.stopBroadcast();
+    }
 
     function generateSignedUserOperarion(bytes memory callData, HelperConfig.NetworkConfig memory config, address minimalAccount)
         public
@@ -29,10 +44,10 @@ contract SendPackedUserOp is Script {
         bytes32 r;
         bytes32 s;
         uint256 ANVIL_DEFAULT_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
-        if (block.chainid != 31337) {
+        if (block.chainid == 31337) {
             (v, r, s) = vm.sign(ANVIL_DEFAULT_KEY, digest);
         } else {
-            (v, r, s) = vm.sign(address(minimalAccount), digest);
+            (v, r, s) = vm.sign(config.account, digest);
         }
         userOp.signature = abi.encodePacked(r, s, v); // look at the the  order
         return userOp;

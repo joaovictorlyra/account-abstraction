@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import {Test} from "forge-std/Test.sol";
+import {Test, console2} from "forge-std/Test.sol";
 import {MinimalAccount} from "../../src/ethereum/MinimalAccount.sol";
 import {DeployMinimal} from "../../script/DeployMinimal.s.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
@@ -28,6 +28,10 @@ contract MinimalAccountTest is Test {
         (helperConfig, minimalAccount) = deployMinimal.deployMinimal();
         usdc = new ERC20Mock();
         sendPackedUserOp = new SendPackedUserOp();
+        vm.deal(address(minimalAccount), 100 ether);
+
+        console2.log("MinimalAccount owner:", minimalAccount.owner());
+        console2.log("Config account:", helperConfig.getConfig().account);
     }
 
     // USDC Approval
@@ -91,8 +95,8 @@ contract MinimalAccountTest is Test {
         PackedUserOperation memory packedUserOp = sendPackedUserOp.generateSignedUserOperarion(
             executeCallData, helperConfig.getConfig(), address(minimalAccount)
         );
-        uint256 missingAccountFunds = 1e18;
         bytes32 userOperationHash = IEntryPoint(helperConfig.getConfig().entryPoint).getUserOpHash(packedUserOp);
+        uint256 missingAccountFunds = 1e18;
         // Act
         vm.prank(helperConfig.getConfig().entryPoint);
         uint256 validationData = minimalAccount.validateUserOp(packedUserOp, userOperationHash, missingAccountFunds);
