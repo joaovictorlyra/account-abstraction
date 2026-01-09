@@ -17,9 +17,13 @@ contract SendPackedUserOp is Script {
         HelperConfig helperConfig = new HelperConfig();
         address dest = 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d; // Arbitrum Sepolia usdc address
         uint256 value = 0;
-        bytes memory functionData = abi.encodeWithSelector(IERC20.approve.selector, 0xC76DA0866C529c1822BA4673dB6D360378AA134E, 1e18);
-        bytes memory executeCallData = abi.encodeWithSelector(MinimalAccount.execute.selector, dest, value, functionData);
-        PackedUserOperation memory userOp = generateSignedUserOperarion(executeCallData, helperConfig.getConfig(), 0xDd9F940558FC1E78d0cBb262a11FBA5927799063);
+        bytes memory functionData =
+            abi.encodeWithSelector(IERC20.approve.selector, 0xC76DA0866C529c1822BA4673dB6D360378AA134E, 1e18);
+        bytes memory executeCallData =
+            abi.encodeWithSelector(MinimalAccount.execute.selector, dest, value, functionData);
+        PackedUserOperation memory userOp = generateSignedUserOperarion(
+            executeCallData, helperConfig.getConfig(), 0xDd9F940558FC1E78d0cBb262a11FBA5927799063
+        );
         PackedUserOperation[] memory ops = new PackedUserOperation[](1);
         ops[0] = userOp;
 
@@ -28,11 +32,11 @@ contract SendPackedUserOp is Script {
         vm.stopBroadcast();
     }
 
-    function generateSignedUserOperarion(bytes memory callData, HelperConfig.NetworkConfig memory config, address minimalAccount)
-        public
-        view
-        returns (PackedUserOperation memory)
-    {
+    function generateSignedUserOperarion(
+        bytes memory callData,
+        HelperConfig.NetworkConfig memory config,
+        address minimalAccount
+    ) public view returns (PackedUserOperation memory) {
         // 1. Generate the unsigned data
         uint256 nonce = vm.getNonce(minimalAccount) - 1;
         PackedUserOperation memory userOp = _generateUnsignedUserOperation(callData, minimalAccount, nonce);

@@ -57,10 +57,7 @@ contract HelperConfig is Script {
     }
 
     function getArbitrumSepoliaConfig() public pure returns (NetworkConfig memory) {
-        return NetworkConfig({
-            entryPoint: ENTRYPOINT_ADDRESS,
-            account: BURNER_WALLET
-        });
+        return NetworkConfig({entryPoint: ENTRYPOINT_ADDRESS, account: BURNER_WALLET});
     }
 
     function getOrCreateAnvilConfig() public returns (NetworkConfig memory) {
