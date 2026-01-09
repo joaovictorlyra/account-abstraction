@@ -4,6 +4,9 @@ pragma solidity ^0.8.24;
 
 import {IAccount} from "lib/foundry-era-contracts/src/system-contracts/contracts/interfaces/IAccount.sol";
 import {Transaction} from "lib/foundry-era-contracts/src/system-contracts/contracts/libraries/MemoryTransactionHelper.sol";
+import {SystemContractsCaller} from "lib/foundry-era-contracts/src/system-contracts/contracts/libraries/SystemContractsCaller.sol";
+import {NONCE_HOLDER_SYSTEM_CONTRACT} from "lib/foundry-era-contracts/src/system-contracts/contracts/Constants.sol";
+import {INonceHolder} from "lib/foundry-era-contracts/src/system-contracts/contracts/interfaces/INonceHolder.sol";
 
 /**
  * Lifecycle of a type 113 (0x71) transaction
@@ -25,11 +28,33 @@ import {Transaction} from "lib/foundry-era-contracts/src/system-contracts/contra
  */
 
 contract ZkMinimalAccount is IAccount {
+
+    /*//////////////////////////////////////////////////////////////
+                           EXTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
     // ...who is the msg.sender when this is called?
+    /**
+    * @notice must increase the nonce
+    * @notice must validate the transaction (check the owner signed the transaction)
+    * @notice also check if we have enough balance to pay for the transaction
+    */
     function validateTransaction(bytes32 _txHash, bytes32 _suggestedSignedHash, Transaction memory _transaction)
         external
         payable
-        returns (bytes4 magic) {}
+        returns (bytes4 magic) 
+        {
+            // Call NonceHolder
+            // increment the nonce
+            // call(x,y,z) ->system contract call
+            SystemContractsCaller.systemCallWithPropagatedRevert(
+                uint32(gasleft()),
+                address(NONCE_HOLDER_SYSTEM_CONTRACT),
+                0,
+                abi.encodeCall(INonceHolder.incrementMinNonceIfEquals, (_transaction.nonce))
+                );
+
+        }
 
     function executeTransaction(bytes32 _txHash, bytes32 _suggestedSignedHash, Transaction memory _transaction)
         external
@@ -46,4 +71,8 @@ contract ZkMinimalAccount is IAccount {
     function prepareForPaymaster(bytes32 _txHash, bytes32 _possibleSignedHash, Transaction memory _transaction)
         external
         payable {}
+
+    /*//////////////////////////////////////////////////////////////
+                           INTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 }
