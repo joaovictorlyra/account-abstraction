@@ -63,15 +63,19 @@ contract ZkMinimalAccount is IAccount, Ownable {
         if (msg.sender != BOOTLOADER_FORMAL_ADDRESS) {
             revert ZkMinimalAccount__NotFromBootLoader();
         }
+        _;
     }
 
     modifier requireFromBootLoaderOrOwner() {
         if (msg.sender != BOOTLOADER_FORMAL_ADDRESS && msg.sender != owner()) {
             revert ZkMinimalAccount__NotFromBootLoaderOrOwner();
         }
+        _;
     }    
 
     constructor() Ownable(msg.sender) {}
+
+    receive() external payable {}
 
     /*//////////////////////////////////////////////////////////////
                            EXTERNAL FUNCTIONS
@@ -89,6 +93,44 @@ contract ZkMinimalAccount is IAccount, Ownable {
         requireFromBootLoader
         returns (bytes4 magic)
     {
+        return _validateTransaction(_transaction);
+    }
+
+    function executeTransaction(bytes32, /*_txHash*/ bytes32, /*_suggestedSignedHash*/ Transaction memory _transaction)
+        external
+        payable
+        requireFromBootLoaderOrOwner
+    {
+        _executeTransaction(_transaction);
+    }
+
+    // There is no point in providing possible signed hash in the `executeTransactionFromOutside` method,
+    // since it typically should not be trusted.
+    function executeTransactionFromOutside(Transaction memory _transaction) external payable 
+    {
+        _validateTransaction(_transaction);
+        _executeTransaction(_transaction);
+    }
+
+    function payForTransaction(bytes32 /*_txHash*/, bytes32 /*_suggestedSignedHash*/, Transaction memory _transaction)
+        external
+        payable 
+        {
+            (bool success,) = _transaction.payToTheBootloader();
+            if (!success) {
+                revert ZkMinimalAccount__FailedToPay();
+            }
+        }
+
+    function prepareForPaymaster(bytes32 _txHash, bytes32 _possibleSignedHash, Transaction memory _transaction)
+        external
+        payable {}
+
+    /*//////////////////////////////////////////////////////////////
+                           INTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+    function _validateTransaction(Transaction memory _transaction) internal returns (bytes4 magic) {
         // Call NonceHolder
         // increment the nonce
         // call(x,y,z) ->system contract call
@@ -121,17 +163,17 @@ contract ZkMinimalAccount is IAccount, Ownable {
         } else {
             magic = bytes4(0); // Magic value for failure (equivalent to false)
         }
-        return magic;
+        return magic;        
     }
 
-    function executeTransaction(
+    function _executeTransaction( 
         bytes32,
         /*_txHash*/
         bytes32,
         /*_suggestedSignedHash*/
         Transaction memory _transaction
     )
-        external
+        internal
         payable
         requireFromBootLoaderOrOwner()
     {
@@ -152,26 +194,5 @@ contract ZkMinimalAccount is IAccount, Ownable {
             }
         }
     }
-
-    // There is no point in providing possible signed hash in the `executeTransactionFromOutside` method,
-    // since it typically should not be trusted.
-    function executeTransactionFromOutside(Transaction memory _transaction) external payable {}
-
-    function payForTransaction(bytes32 /*_txHash*/, bytes32 /*_suggestedSignedHash*/, Transaction memory _transaction)
-        external
-        payable 
-        {
-            (bool success,) = _transaction.payToTheBootloader();
-            if (!success) {
-                revert ZkMinimalAccount__FailedToPay();
-            }
-        }
-
-    function prepareForPaymaster(bytes32 _txHash, bytes32 _possibleSignedHash, Transaction memory _transaction)
-        external
-        payable {}
-
-    /*//////////////////////////////////////////////////////////////
-                           INTERNAL FUNCTIONS
-    //////////////////////////////////////////////////////////////*/
+    
 }
